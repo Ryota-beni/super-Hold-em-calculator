@@ -74,18 +74,6 @@
     /* ハンドカード */
     .hand-slot { width: 52px; height: 75px; }
 
-    /* ハンドのみ削除ボタン */
-    .rm-btn {
-      position: absolute; top: 3px; right: 3px;
-      width: 17px; height: 17px;
-      background: rgba(200,0,0,0.85);
-      border: 1px solid rgba(255,255,255,0.5);
-      border-radius: 50%; color: #fff;
-      font-size: 11px; font-weight: 900;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; z-index: 10;
-      line-height: 1;
-    }
 
     /* ── プレイヤー行 ────────────────── */
     .player-block { margin-bottom: 10px; }
@@ -467,17 +455,6 @@ function makeSlotEl(card, type, pi, ci, extraClass) {
 
   if (card) {
     div.innerHTML = cardFaceHTML(card);
-    // ハンドカードのみ削除ボタン
-    if (type === 'hand') {
-      var rm = document.createElement('button');
-      rm.className = 'rm-btn';
-      rm.textContent = '×';
-      rm.addEventListener('click', function(e){
-        e.stopPropagation();
-        removeCard(type, pi, ci);
-      });
-      div.appendChild(rm);
-    }
   }
 
   div.addEventListener('click', function(){ openPicker(type, pi, ci); });
@@ -600,17 +577,23 @@ function openPicker(type, pi, ci) {
   }
   sheet.appendChild(title);
 
-  // ボードのリセットボタン
+  // リセットボタン（ハンド／ボード共通）
+  var resetBtn=document.createElement('button');
+  resetBtn.className='action-btn btn-reset';
   if(type==='board'){
-    var resetBtn=document.createElement('button');
-    resetBtn.className='action-btn btn-reset';
     resetBtn.textContent='ボードをリセット';
     resetBtn.addEventListener('click',function(){
       state.board=[null,null,null,null,null];
       closePicker();
     });
-    sheet.appendChild(resetBtn);
+  } else {
+    resetBtn.textContent='このハンドをリセット';
+    resetBtn.addEventListener('click',function(){
+      state.players[pi].hand=[null,null,null];
+      closePicker();
+    });
   }
+  sheet.appendChild(resetBtn);
 
   // スートごとにカードグリッド
   for(var s=0;s<SUITS.length;s++){
