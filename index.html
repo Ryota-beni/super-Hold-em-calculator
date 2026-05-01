@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>スーパーホールデム 勝率計算機</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      padding: 16px 14px 60px;
+      background-color: #0d0d18;
+      background-image:
+        radial-gradient(ellipse at 25% 15%, rgba(40,55,120,0.35) 0%, transparent 55%),
+        radial-gradient(ellipse at 75% 85%, rgba(20,80,45,0.25) 0%, transparent 55%);
+      color: #e8e8f0;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #c9a84c;
+      margin-bottom: 18px;
+      text-shadow: 0 0 20px rgba(201,168,76,0.4);
+    }
+
+    /* ── ボード ─────────────────────── */
+    #board-row {
+      display: flex;
+      gap: 7px;
+      margin-bottom: 20px;
+    }
+
+    /* ── カードスロット共通 ───────────── */
+    .slot {
+      border-radius: 7px;
+      cursor: pointer;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.12s, box-shadow 0.12s;
+      overflow: hidden;
+    }
+    .slot:active { transform: scale(0.88); }
+
+    .slot.empty {
+      background: rgba(255,255,255,0.04);
+      border: 1.5px dashed rgba(255,255,255,0.18);
+    }
+    .slot.empty::after {
+      content: '+';
+      font-size: 22px;
+      font-weight: 300;
+      color: rgba(255,255,255,0.2);
+    }
+
+    .slot.filled {
+      background: transparent;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.4);
+    }
+    .slot.filled img,
+    .slot.filled svg { width: 100%; height: 100%; display: block; }
+
+    /* ボードカード */
+    .board-slot { flex: 1; aspect-ratio: 0.69; }
+
+    /* ハンドカード */
+    .hand-slot { width: 52px; height: 75px; }
+
+    /* ハンドのみ削除ボタン */
+    .rm-btn {
+      position: absolute; top: 3px; right: 3px;
+      width: 17px; height: 17px;
+      background: rgba(200,0,0,0.85);
+      border: 1px solid rgba(255,255,255,0.5);
+      border-radius: 50%; color: #fff;
+      font-size: 11px; font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 10;
+      line-height: 1;
+    }
+
+    /* ── プレイヤー行 ────────────────── */
+    .player-block { margin-bottom: 10px; }
+
+    .player-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pname {
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(201,168,76,0.7);
+      letter-spacing: 0.5px;
+      width: 58px;
+      flex-shrink: 0;
+    }
+
+    .hand-slots { display: flex; gap: 5px; }
+
+    .winpct {
+      margin-left: auto;
+      font-size: 26px;
+      font-weight: 900;
+      color: #39d353;
+      min-width: 80px;
+      text-align: right;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .winpct.dim { color: rgba(255,255,255,0.18); font-size: 18px; }
+
+    .del-x {
+      background: none; border: none;
+      color: rgba(255,255,255,0.2);
+      font-size: 20px; cursor: pointer;
+      padding: 0 2px; line-height: 1;
+      flex-shrink: 0;
+    }
+    .del-x:active { color: #e63946; }
+
+    .sub-row {
+      padding-left: 68px;
+      margin-top: 5px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.38);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+      align-items: center;
+    }
+
+    .hand-name-lbl { color: #7c83ff; font-weight: 600; }
+
+    .out-pip {
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-size: 11px;
+      font-weight: 800;
+      background: #fff;
+    }
+    .out-pip.sp { color: #1a1a2e; }
+    .out-pip.he { color: #dc2626; }
+    .out-pip.cl { color: #16a34a; }
+    .out-pip.di { color: #2563eb; }
+
+    .divider {
+      height: 1px;
+      background: rgba(255,255,255,0.07);
+      margin: 8px 0;
+    }
+
+    /* ── 追加ボタン ──────────────────── */
+    #add-btn {
+      display: block; width: 100%;
+      margin-top: 6px; padding: 13px;
+      border-radius: 10px;
+      border: 1.5px dashed rgba(201,168,76,0.3);
+      background: rgba(201,168,76,0.05);
+      color: rgba(201,168,76,0.5);
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; text-align: center;
+      letter-spacing: 0.5px;
+    }
+    #add-btn:active { background: rgba(201,168,76,0.1); }
+
+    /* ── ピッカーモーダル ────────────── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 500;
+      display: flex; flex-direction: column; justify-content: flex-end;
+    }
+
+    .sheet {
+      background: #13131f;
+      border-radius: 20px 20px 0 0;
+      padding: 14px 12px 40px;
+      max-height: 78vh;
+      overflow-y: auto;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .sheet-title {
+      text-align: center;
+      font-size: 14px; font-weight: 700;
+      color: #c9a84c;
+      margin-bottom: 10px;
+      letter-spacing: 0.5px;
+    }
+
+    .suit-sec { margin-bottom: 10px; }
+    .suit-label {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase;
+      margin-bottom: 5px;
+      opacity: 0.6;
+    }
+
+    .pip-row { display: flex; flex-wrap: wrap; gap: 4px; }
+
+    /* ピッカーのミニカードボタン */
+    .pip {
+      width: 40px; height: 56px;
+      border-radius: 5px; border: none;
+      background: #fff;
+      cursor: pointer;
+      padding: 0; overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.1s;
+      flex-shrink: 0;
+    }
+    .pip:active { transform: scale(0.84); }
+    .pip.used { opacity: 0.1; pointer-events: none; }
+    .pip svg, .pip img { width: 100%; height: 100%; display: block; }
+
+    .action-btn {
+      width: 100%; margin-top: 8px; padding: 13px;
+      border-radius: 10px; border: none;
+      font-size: 14px; font-weight: 700; cursor: pointer;
+    }
+    .btn-reset {
+      background: rgba(220,0,0,0.15);
+      color: #f87171;
+      border: 1px solid rgba(220,0,0,0.25);
+    }
+    .btn-cancel {
+      background: rgba(255,255,255,0.07);
+      color: rgba(255,255,255,0.6);
+    }
+  </style>
+</head>
+<body>
+
+<h1>SUPER HOLD'EM</h1>
+
+<div id="board-row"></div>
+<div id="players"></div>
+<button id="add-btn" onclick="addPlayer()">＋ プレイヤーを追加</button>
+<div id="picker"></div>
+
+<script>
+"use strict";
+
+// ══════════════════════════════════════════════
+//  定数
+// ══════════════════════════════════════════════
+var SUITS = ['♠','♥','♦','♣'];
+var RANKS = ['2','3','4','5','6','7','8','9','T','J','Q','K','A'];
+
+// スートごとの色設定
+var SUIT_COLOR = { '♠':'#1a1a2e', '♥':'#dc2626', '♣':'#16a34a', '♦':'#2563eb' };
+var SUIT_CLASS = { '♠':'sp', '♥':'he', '♣':'cl', '♦':'di' };
+var SUIT_NAME  = { '♠':'スペード', '♥':'ハート', '♣':'クラブ', '♦':'ダイヤ' };
+
+var ALL_CARDS = [];
+for (var _s = 0; _s < SUITS.length; _s++)
+  for (var _r = 0; _r < RANKS.length; _r++)
+    ALL_CARDS.push(RANKS[_r] + SUITS[_s]);
+
+var HNAMES = ['ハイカード','ワンペア','ツーペア','スリーカード',
+              'ストレート','フラッシュ','フルハウス','フォーカード','ストレートフラッシュ'];
+
+// ══════════════════════════════════════════════
+//  カード描画
+//  ▼▼▼ 画像ファイルに変更する場合はこの関数だけ書き換えればOK ▼▼▼
+//
+//  例（pngファイルを cards/ フォルダに入れた場合）:
+//    var sMap = {'♠':'s','♥':'h','♣':'c','♦':'d'};
+//    return '<img src="cards/' + card[0] + sMap[card[1]] + '.png"' +
+//           ' style="width:100%;height:100%;object-fit:cover;border-radius:5px;">';
+//
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+function cardFaceHTML(card) {
+  return cardSVG(card);
+}
+
+function cardSVG(card) {
+  var rank = card[0];
+  var suit = card[1];
+  var col  = SUIT_COLOR[suit];
+  var dr   = rank === 'T' ? '10' : rank;
+  var fs   = dr === '10' ? '10' : '12';  // rankのフォントサイズ
+
+  return '<svg viewBox="0 0 58 82" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect width="58" height="82" rx="5" ry="5" fill="#fff" stroke="#ccc" stroke-width="0.5"/>' +
+    // 左上：ランク
+    '<text x="4" y="13" font-family="Georgia,serif" font-size="' + fs + '" font-weight="bold" fill="' + col + '">' + dr + '</text>' +
+    // 左上：スート
+    '<text x="4" y="24" font-family="Arial,sans-serif" font-size="11" fill="' + col + '">' + suit + '</text>' +
+    // 中央：大きいスート
+    '<text x="29" y="45" font-family="Arial,sans-serif" font-size="26" text-anchor="middle" dominant-baseline="middle" fill="' + col + '">' + suit + '</text>' +
+    // 右下（左上を180°回転）
+    '<g transform="rotate(180,29,41)">' +
+    '<text x="4" y="13" font-family="Georgia,serif" font-size="' + fs + '" font-weight="bold" fill="' + col + '">' + dr + '</text>' +
+    '<text x="4" y="24" font-family="Arial,sans-serif" font-size="11" fill="' + col + '">' + suit + '</text>' +
+    '</g>' +
+    '</svg>';
+}
+// ══════════════════════════════════════════════
+
+function dispRank(card) { return card[0] === 'T' ? '10' : card[0]; }
+function rankDisp(r)    { return r === 'T' ? '10' : r; }
+
+// ══════════════════════════════════════════════
+//  ハンド評価
+// ══════════════════════════════════════════════
+function eval5(cs) {
+  var r = [], s = [];
+  for (var i = 0; i < 5; i++) { r.push(RANKS.indexOf(cs[i][0])); s.push(cs[i][1]); }
+  var fl = s[0]===s[1] && s[1]===s[2] && s[2]===s[3] && s[3]===s[4];
+  var sr = r.slice().sort(function(a,b){return b-a;});
+  var fr = [0,0,0,0,0,0,0,0,0,0,0,0,0];
+  for (var i = 0; i < 5; i++) fr[r[i]]++;
+  var uniq = 0; for (var i = 0; i < 13; i++) if (fr[i]) uniq++;
+  var st = false, shi = sr[0];
+  if (uniq === 5) {
+    if (sr[0]-sr[4]===4) st = true;
+    if (sr[0]===12&&sr[1]===3&&sr[2]===2&&sr[3]===1&&sr[4]===0){st=true;shi=3;}
+  }
+  var g = [];
+  for (var i = 12; i >= 0; i--) if (fr[i]) g.push([fr[i],i]);
+  g.sort(function(a,b){return b[0]!==a[0]?b[0]-a[0]:b[1]-a[1];});
+  var c0=g[0][0], c1=g.length>1?g[1][0]:0, cat;
+  if(fl&&st)cat=8; else if(c0===4)cat=7; else if(c0===3&&c1===2)cat=6;
+  else if(fl)cat=5; else if(st)cat=4; else if(c0===3)cat=3;
+  else if(c0===2&&c1===2)cat=2; else if(c0===2)cat=1; else cat=0;
+  var score = cat * Math.pow(15,5);
+  if (st){ score += shi*Math.pow(15,4); }
+  else { for(var i=0;i<g.length&&i<5;i++) score+=g[i][1]*Math.pow(15,4-i); }
+  return score;
+}
+
+function bestHand(cards) {
+  var n = cards.length;
+  if (n < 5) return -1;
+  if (n === 5) return eval5(cards);
+  var best = -1;
+  for (var a=0;a<n-4;a++) for (var b=a+1;b<n-3;b++) for (var c=b+1;c<n-2;c++)
+  for (var d=c+1;d<n-1;d++) for (var e=d+1;e<n;e++) {
+    var sc = eval5([cards[a],cards[b],cards[c],cards[d],cards[e]]);
+    if (sc > best) best = sc;
+  }
+  return best;
+}
+
+function handName(score) {
+  if (score < 0) return '';
+  return HNAMES[Math.floor(score / Math.pow(15,5))] || '';
+}
+
+// ══════════════════════════════════════════════
+//  モンテカルロシミュレーション
+// ══════════════════════════════════════════════
+function simulate(hands, board, nsims) {
+  var known = {};
+  for (var i=0;i<hands.length;i++) for (var j=0;j<hands[i].length;j++) if(hands[i][j]) known[hands[i][j]]=true;
+  for (var i=0;i<board.length;i++) if(board[i]) known[board[i]]=true;
+  var deck = ALL_CARDS.filter(function(c){return !known[c];});
+  var np = hands.length;
+
+  var unk = 0;
+  for (var i=0;i<board.length;i++) if(!board[i]) unk++;
+  for (var i=0;i<hands.length;i++) for (var j=0;j<hands[i].length;j++) if(!hands[i][j]) unk++;
+
+  if (unk === 0) {
+    var bf = board.filter(Boolean);
+    var sc = hands.map(function(h){return bestHand(h.filter(Boolean).concat(bf));});
+    var mx = Math.max.apply(null,sc), nw = sc.filter(function(s){return s===mx;}).length;
+    return { wins: sc.map(function(s){return s===mx?1/nw:0;}), tieRate: nw>1?1:0 };
+  }
+
+  var wins=[]; for(var i=0;i<np;i++) wins.push(0);
+  var ties=0;
+  function shuf(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;}}
+  var da=deck.slice(), sb=[null,null,null,null,null], sh=[];
+  for(var i=0;i<np;i++) sh.push([null,null,null]);
+
+  for (var t=0;t<nsims;t++) {
+    shuf(da); var idx=0;
+    for(var i=0;i<5;i++) sb[i]=board[i]||da[idx++];
+    for(var p=0;p<np;p++) for(var j=0;j<3;j++) sh[p][j]=hands[p][j]||da[idx++];
+    var mx=-1, sc=[];
+    for(var p=0;p<np;p++){var s=bestHand([sh[p][0],sh[p][1],sh[p][2],sb[0],sb[1],sb[2],sb[3],sb[4]]);sc.push(s);if(s>mx)mx=s;}
+    var nw=0; for(var p=0;p<np;p++) if(sc[p]===mx) nw++;
+    if(nw>1) ties++;
+    for(var p=0;p<np;p++) if(sc[p]===mx) wins[p]+=1/nw;
+  }
+  return { wins: wins.map(function(w){return w/nsims;}), tieRate: ties/nsims };
+}
+
+// ══════════════════════════════════════════════
+//  アウツ計算
+// ══════════════════════════════════════════════
+function calcOuts(pi, hands, board) {
+  var bc=board.filter(Boolean), bn=bc.length;
+  if(bn<3||bn>4||hands.length<2) return null;
+  for(var i=0;i<hands.length;i++) for(var j=0;j<3;j++) if(!hands[i][j]) return null;
+  var known={};
+  for(var i=0;i<hands.length;i++) for(var j=0;j<3;j++) known[hands[i][j]]=true;
+  for(var i=0;i<bc.length;i++) known[bc[i]]=true;
+  var rem=ALL_CARDS.filter(function(c){return !known[c];}), outs=[];
+  for(var k=0;k<rem.length;k++){
+    var tb=bc.concat([rem[k]]), mx=-1, sc=[];
+    for(var i=0;i<hands.length;i++){var s=bestHand(hands[i].concat(tb));sc.push(s);if(s>mx)mx=s;}
+    if(sc[pi]===mx) outs.push(rem[k]);
+  }
+  return { outs:outs, bn:bn };
+}
+
+// ══════════════════════════════════════════════
+//  状態
+// ══════════════════════════════════════════════
+var state = {
+  players: [{hand:[null,null,null]},{hand:[null,null,null]}],
+  board:   [null,null,null,null,null],
+  activeSlot: null,
+  results: null, allOuts: null, calculating: false
+};
+var calcTimer = null;
+
+function fullHandCount() {
+  var n=0;
+  for(var i=0;i<state.players.length;i++){var h=state.players[i].hand;if(h[0]&&h[1]&&h[2])n++;}
+  return n;
+}
+
+function scheduleCalc() {
+  if(calcTimer) clearTimeout(calcTimer);
+  state.results=null; state.allOuts=null;
+  if(fullHandCount()<2){ state.calculating=false; renderAll(); return; }
+  state.calculating=true; renderAll();
+  calcTimer=setTimeout(function(){
+    try {
+      var hands=state.players.map(function(p){return p.hand;});
+      var nsims=state.players.length<=3?6000:4000;
+      state.results=simulate(hands,state.board,nsims);
+      state.allOuts=[];
+      for(var i=0;i<state.players.length;i++) state.allOuts.push(calcOuts(i,hands,state.board));
+    } catch(e){console.error(e);}
+    state.calculating=false; renderAll();
+  },30);
+}
+
+// ══════════════════════════════════════════════
+//  描画ヘルパー
+// ══════════════════════════════════════════════
+function getUsed(){
+  var u={};
+  for(var i=0;i<state.players.length;i++) for(var j=0;j<3;j++) if(state.players[i].hand[j]) u[state.players[i].hand[j]]=true;
+  for(var i=0;i<state.board.length;i++) if(state.board[i]) u[state.board[i]]=true;
+  return u;
+}
+
+function makeSlotEl(card, type, pi, ci, extraClass) {
+  var div = document.createElement('div');
+  div.className = 'slot ' + (extraClass||'') + (card?' filled':' empty');
+
+  if (card) {
+    div.innerHTML = cardFaceHTML(card);
+    // ハンドカードのみ削除ボタン
+    if (type === 'hand') {
+      var rm = document.createElement('button');
+      rm.className = 'rm-btn';
+      rm.textContent = '×';
+      rm.addEventListener('click', function(e){
+        e.stopPropagation();
+        removeCard(type, pi, ci);
+      });
+      div.appendChild(rm);
+    }
+  }
+
+  div.addEventListener('click', function(){ openPicker(type, pi, ci); });
+  return div;
+}
+
+// ── ボード描画
+function renderBoard() {
+  var row = document.getElementById('board-row');
+  row.innerHTML = '';
+  for(var i=0;i<5;i++) row.appendChild(makeSlotEl(state.board[i],'board',undefined,i,'board-slot'));
+}
+
+// ── プレイヤー描画
+function renderPlayers() {
+  var container = document.getElementById('players');
+  container.innerHTML = '';
+  var hands = state.players.map(function(p){return p.hand;});
+  var maxWin = state.results ? Math.max.apply(null,state.results.wins) : 0;
+
+  for(var i=0;i<state.players.length;i++){
+    var p = state.players[i];
+
+    var wpText='--', wpDim=true;
+    if(!state.calculating&&state.results){ wpText=(state.results.wins[i]*100).toFixed(1)+'%'; wpDim=false; }
+    else if(state.calculating) wpText='…';
+
+    var knownAll = p.hand.filter(Boolean).concat(state.board.filter(Boolean));
+    var hn = (p.hand.filter(Boolean).length>=1&&knownAll.length>=5) ? handName(bestHand(knownAll)) : '';
+
+    var block = document.createElement('div');
+    block.className = 'player-block';
+
+    // メイン行
+    var main = document.createElement('div');
+    main.className = 'player-main';
+
+    var nm = document.createElement('div');
+    nm.className = 'pname';
+    nm.textContent = 'Player '+(i+1);
+    main.appendChild(nm);
+
+    var hs = document.createElement('div');
+    hs.className = 'hand-slots';
+    for(var j=0;j<3;j++) hs.appendChild(makeSlotEl(p.hand[j],'hand',i,j,'hand-slot'));
+    main.appendChild(hs);
+
+    var wp = document.createElement('div');
+    wp.className = 'winpct'+(wpDim?' dim':'');
+    wp.textContent = wpText;
+    main.appendChild(wp);
+
+    if(state.players.length>2){
+      var dx = document.createElement('button');
+      dx.className = 'del-x'; dx.textContent = '×';
+      (function(idx){ dx.addEventListener('click',function(){deletePlayer(idx);}); })(i);
+      main.appendChild(dx);
+    }
+    block.appendChild(main);
+
+    // ハンド名
+    if(hn){
+      var hnEl=document.createElement('div'); hnEl.className='sub-row';
+      var sp=document.createElement('span'); sp.className='hand-name-lbl'; sp.textContent=hn;
+      hnEl.appendChild(sp); block.appendChild(hnEl);
+    }
+
+    // アウツ（負けているプレイヤーのみ）
+    var isLosing = state.results && (state.results.wins[i] < maxWin - 0.001);
+    if(!state.calculating && isLosing && state.allOuts && state.allOuts[i]){
+      var od=state.allOuts[i];
+      var oRow=document.createElement('div'); oRow.className='sub-row';
+      var lbl=document.createElement('span');
+      lbl.textContent=(od.bn===4?'リバー':'ターン')+'アウツ: '+od.outs.length+'枚　';
+      oRow.appendChild(lbl);
+      var show=od.outs.slice(0,14);
+      for(var k=0;k<show.length;k++){
+        var pip=document.createElement('span');
+        pip.className='out-pip '+SUIT_CLASS[show[k][1]];
+        pip.textContent=dispRank(show[k])+show[k][1];
+        oRow.appendChild(pip);
+      }
+      if(od.outs.length>14){var m=document.createElement('span');m.textContent='…';oRow.appendChild(m);}
+      block.appendChild(oRow);
+    }
+
+    container.appendChild(block);
+    if(i<state.players.length-1){
+      var dv=document.createElement('div'); dv.className='divider'; container.appendChild(dv);
+    }
+  }
+}
+
+function renderAll(){ renderBoard(); renderPlayers(); }
+
+// ══════════════════════════════════════════════
+//  カードピッカー
+// ══════════════════════════════════════════════
+function openPicker(type, pi, ci) {
+  state.activeSlot = {type:type, pi:pi, ci:ci};
+  var used = getUsed();
+  var pickerEl = document.getElementById('picker');
+
+  var overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) closePicker(); });
+
+  var sheet = document.createElement('div');
+  sheet.className = 'sheet';
+
+  // タイトル
+  var title = document.createElement('div');
+  title.className = 'sheet-title';
+  if(type==='hand'){
+    var filled=state.players[pi].hand.filter(Boolean).length;
+    title.textContent='Player '+(pi+1)+' のカード（'+(filled+1)+' / 3枚目）';
+  } else {
+    var bf=state.board.filter(Boolean).length;
+    title.textContent='ボード（'+(bf+1)+' / 5枚目）';
+  }
+  sheet.appendChild(title);
+
+  // ボードのリセットボタン
+  if(type==='board'){
+    var resetBtn=document.createElement('button');
+    resetBtn.className='action-btn btn-reset';
+    resetBtn.textContent='ボードをリセット';
+    resetBtn.addEventListener('click',function(){
+      state.board=[null,null,null,null,null];
+      closePicker();
+    });
+    sheet.appendChild(resetBtn);
+  }
+
+  // スートごとにカードグリッド
+  for(var s=0;s<SUITS.length;s++){
+    var suit=SUITS[s], col=SUIT_COLOR[suit];
+
+    var sec=document.createElement('div'); sec.className='suit-sec';
+    var lbl=document.createElement('div'); lbl.className='suit-label';
+    lbl.style.color=col; lbl.textContent=suit+' '+SUIT_NAME[suit];
+    sec.appendChild(lbl);
+
+    var row=document.createElement('div'); row.className='pip-row';
+    for(var r=0;r<RANKS.length;r++){
+      var card=RANKS[r]+suit;
+      var btn=document.createElement('button');
+      btn.className='pip'+(used[card]?' used':'');
+      btn.disabled=!!used[card];
+      btn.innerHTML=cardFaceHTML(card);
+      (function(c){btn.addEventListener('click',function(){selectCard(c);});})(card);
+      row.appendChild(btn);
+    }
+    sec.appendChild(row); sheet.appendChild(sec);
+  }
+
+  // キャンセル
+  var cancelBtn=document.createElement('button');
+  cancelBtn.className='action-btn btn-cancel';
+  cancelBtn.textContent='キャンセル';
+  cancelBtn.addEventListener('click',closePicker);
+  sheet.appendChild(cancelBtn);
+
+  overlay.appendChild(sheet);
+  pickerEl.innerHTML='';
+  pickerEl.appendChild(overlay);
+}
+
+function closePicker(){
+  state.activeSlot=null;
+  document.getElementById('picker').innerHTML='';
+  scheduleCalc();
+}
+
+function selectCard(card){
+  var sl=state.activeSlot; if(!sl) return;
+  if(sl.type==='hand'){
+    state.players[sl.pi].hand[sl.ci]=card;
+    renderPlayers();
+    var hand=state.players[sl.pi].hand, nextEmpty=-1;
+    for(var j=0;j<3;j++) if(!hand[j]){nextEmpty=j;break;}
+    if(nextEmpty!==-1){ openPicker('hand',sl.pi,nextEmpty); return; }
+  } else {
+    state.board[sl.ci]=card;
+    renderBoard();
+    var nextBoard=-1;
+    for(var j=sl.ci+1;j<5;j++) if(!state.board[j]){nextBoard=j;break;}
+    if(nextBoard!==-1){ openPicker('board',undefined,nextBoard); return; }
+  }
+  closePicker();
+}
+
+function removeCard(type,pi,ci){
+  if(type==='hand') state.players[pi].hand[ci]=null;
+  else state.board[ci]=null;
+  scheduleCalc();
+}
+
+// ══════════════════════════════════════════════
+//  プレイヤー操作
+// ══════════════════════════════════════════════
+function addPlayer(){
+  if(state.players.length>=9) return;
+  state.players.push({hand:[null,null,null]});
+  scheduleCalc();
+}
+function deletePlayer(i){
+  if(state.players.length<=2) return;
+  state.players.splice(i,1);
+  scheduleCalc();
+}
+
+// 起動
+renderAll();
+</script>
+</body>
+</html>
