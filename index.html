@@ -194,18 +194,22 @@
       opacity: 0.6;
     }
 
-    .pip-row { display: flex; flex-wrap: wrap; gap: 4px; }
+    /* 1スートにつき1行（13枚均等配置） */
+    .pip-row {
+      display: grid;
+      grid-template-columns: repeat(13, 1fr);
+      gap: 3px;
+    }
 
-    /* ピッカーのミニカードボタン */
     .pip {
-      width: 40px; height: 56px;
-      border-radius: 5px; border: none;
+      width: 100%;
+      aspect-ratio: 0.69;
+      border-radius: 4px; border: none;
       background: #fff;
       cursor: pointer;
       padding: 0; overflow: hidden;
       -webkit-tap-highlight-color: transparent;
       transition: transform 0.1s;
-      flex-shrink: 0;
     }
     .pip:active { transform: scale(0.84); }
     .pip.used { opacity: 0.1; pointer-events: none; }
@@ -298,6 +302,18 @@ function cardSVG(card) {
 
 function dispRank(card) { return card[0] === 'T' ? '10' : card[0]; }
 function rankDisp(r)    { return r === 'T' ? '10' : r; }
+
+// ピッカー用ミニカードSVG（小さい画面でも1行に収まるシンプル版）
+function miniCardSVG(card) {
+  var rank = card[0], suit = card[1], col = SUIT_COLOR[suit];
+  var dr = rank === 'T' ? '10' : rank;
+  var fs = dr === '10' ? '7' : '9';
+  return '<svg viewBox="0 0 22 32" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect width="22" height="32" rx="2" fill="white"/>' +
+    '<text x="11" y="12" font-family="Georgia,serif" font-size="' + fs + '" font-weight="bold" text-anchor="middle" fill="' + col + '">' + dr + '</text>' +
+    '<text x="11" y="25" font-family="Arial,sans-serif" font-size="11" text-anchor="middle" fill="' + col + '">' + suit + '</text>' +
+    '</svg>';
+}
 
 // ══════════════════════════════════════════════
 //  ハンド評価
@@ -610,7 +626,7 @@ function openPicker(type, pi, ci) {
       var btn=document.createElement('button');
       btn.className='pip'+(used[card]?' used':'');
       btn.disabled=!!used[card];
-      btn.innerHTML=cardFaceHTML(card);
+      btn.innerHTML=miniCardSVG(card);
       (function(c){btn.addEventListener('click',function(){selectCard(c);});})(card);
       row.appendChild(btn);
     }
