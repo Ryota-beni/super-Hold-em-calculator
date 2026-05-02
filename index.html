@@ -585,11 +585,9 @@ function openPicker(type, pi, ci) {
   var title = document.createElement('div');
   title.className = 'sheet-title';
   if(type==='hand'){
-    var filled=state.players[pi].hand.filter(Boolean).length;
-    title.textContent='Player '+(pi+1)+' のカード（'+(filled+1)+' / 3枚目）';
+    title.textContent='Player '+(pi+1)+' のカードを選択';
   } else {
-    var bf=state.board.filter(Boolean).length;
-    title.textContent='ボード（'+(bf+1)+' / 5枚目）';
+    title.textContent='ボードを選択';
   }
   sheet.appendChild(title);
 
