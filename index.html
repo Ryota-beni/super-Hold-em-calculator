@@ -129,17 +129,14 @@
 
     .hand-name-lbl { color: #7c83ff; font-weight: 600; }
 
-    .out-pip {
+    .out-card {
+      width: 28px;
+      aspect-ratio: 0.69;
       border-radius: 3px;
-      padding: 1px 5px;
-      font-size: 11px;
-      font-weight: 800;
-      background: #fff;
+      flex-shrink: 0;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
     }
-    .out-pip.sp { color: #1a1a2e; }
-    .out-pip.he { color: #dc2626; }
-    .out-pip.cl { color: #16a34a; }
-    .out-pip.di { color: #2563eb; }
 
     .divider {
       height: 1px;
@@ -541,12 +538,17 @@ function renderPlayers() {
       oRow.appendChild(lbl);
       var show=od.outs.slice(0,14);
       for(var k=0;k<show.length;k++){
-        var pip=document.createElement('span');
-        pip.className='out-pip '+SUIT_CLASS[show[k][1]];
-        pip.textContent=dispRank(show[k])+show[k][1];
-        oRow.appendChild(pip);
+        var oc=document.createElement('div');
+        oc.className='out-card';
+        var osn=SUIT_NAME_EN[show[k][1]], ork=show[k][0]==='T'?'10':show[k][0];
+        var obp=encodeURI('playing_card/card-'+osn+'-'+ork+' (1).png');
+        oc.style.backgroundImage='url("'+obp+'")';
+        oc.style.backgroundSize='156.25% auto';
+        oc.style.backgroundPosition='44.44% 40.34%';
+        oc.style.backgroundRepeat='no-repeat';
+        oRow.appendChild(oc);
       }
-      if(od.outs.length>14){var m=document.createElement('span');m.textContent='…';oRow.appendChild(m);}
+      if(od.outs.length>14){var m=document.createElement('span');m.style.fontSize='14px';m.textContent='…';oRow.appendChild(m);}
       block.appendChild(oRow);
     }
 
