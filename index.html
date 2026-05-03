@@ -347,43 +347,103 @@ function handName(score) {
 }
 
 // ══════════════════════════════════════════════
-//  モンテカルロシミュレーション
+//  全列挙
 // ══════════════════════════════════════════════
-function simulate(hands, board, nsims) {
-  var known = {};
-  for (var i=0;i<hands.length;i++) for (var j=0;j<hands[i].length;j++) if(hands[i][j]) known[hands[i][j]]=true;
-  for (var i=0;i<board.length;i++) if(board[i]) known[board[i]]=true;
-  var deck = ALL_CARDS.filter(function(c){return !known[c];});
-  var np = hands.length;
-
-  var unk = 0;
-  for (var i=0;i<board.length;i++) if(!board[i]) unk++;
-  for (var i=0;i<hands.length;i++) for (var j=0;j<hands[i].length;j++) if(!hands[i][j]) unk++;
-
-  if (unk === 0) {
-    var bf = board.filter(Boolean);
-    var sc = hands.map(function(h){return bestHand(h.filter(Boolean).concat(bf));});
-    var mx = Math.max.apply(null,sc), nw = sc.filter(function(s){return s===mx;}).length;
-    return { wins: sc.map(function(s){return s===mx?1/nw:0;}), tieRate: nw>1?1:0 };
+// enumerate(hands, board, token, onDone)
+//   hands    : state.players.map(p=>p.hand)
+//   board    : state.board
+//   token    : { cancelled: false } — set .cancelled=true to abort
+//   onDone   : function(result)
+//     result : { wins: [0-1 or null, ...], total: N }
+//              null = プレイヤーのハンドが未確定
+function enumerate(hands, board, token, onDone) {
+  // アクティブプレイヤー（ハンド3枚揃っている）のみ
+  var activeIdx = [];
+  for(var i=0;i<hands.length;i++){
+    var h=hands[i]; if(h[0]&&h[1]&&h[2]) activeIdx.push(i);
   }
+  if(activeIdx.length < 2){ onDone(null); return; }
 
+  var known={};
+  for(var i=0;i<activeIdx.length;i++){
+    var h=hands[activeIdx[i]]; for(var j=0;j<3;j++) known[h[j]]=true;
+  }
+  for(var i=0;i<5;i++) if(board[i]) known[board[i]]=true;
+
+  var deck=ALL_CARDS.filter(function(c){return !known[c];});
+  var unkSlots=[];
+  for(var i=0;i<5;i++) if(!board[i]) unkSlots.push(i);
+  var nu=unkSlots.length, nd=deck.length, np=activeIdx.length;
   var wins=[]; for(var i=0;i<np;i++) wins.push(0);
-  var ties=0;
-  function shuf(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;}}
-  var da=deck.slice(), sb=[null,null,null,null,null], sh=[];
-  for(var i=0;i<np;i++) sh.push([null,null,null]);
+  var total=0;
+  var wb=board.slice();
 
-  for (var t=0;t<nsims;t++) {
-    shuf(da); var idx=0;
-    for(var i=0;i<5;i++) sb[i]=board[i]||da[idx++];
-    for(var p=0;p<np;p++) for(var j=0;j<3;j++) sh[p][j]=hands[p][j]||da[idx++];
+  function evalOne(){
     var mx=-1, sc=[];
-    for(var p=0;p<np;p++){var s=bestHand([sh[p][0],sh[p][1],sh[p][2],sb[0],sb[1],sb[2],sb[3],sb[4]]);sc.push(s);if(s>mx)mx=s;}
+    for(var p=0;p<np;p++){
+      var h=hands[activeIdx[p]];
+      var s=bestHand([h[0],h[1],h[2],wb[0],wb[1],wb[2],wb[3],wb[4]]);
+      sc.push(s); if(s>mx) mx=s;
+    }
     var nw=0; for(var p=0;p<np;p++) if(sc[p]===mx) nw++;
-    if(nw>1) ties++;
     for(var p=0;p<np;p++) if(sc[p]===mx) wins[p]+=1/nw;
+    total++;
   }
-  return { wins: wins.map(function(w){return w/nsims;}), tieRate: ties/nsims };
+
+  function buildResult(){
+    var aw={};
+    for(var p=0;p<np;p++) aw[activeIdx[p]]=wins[p]/total;
+    var winsAll=[];
+    for(var i=0;i<hands.length;i++) winsAll.push(aw[i]!==undefined?aw[i]:null);
+    onDone({wins:winsAll, total:total});
+  }
+
+  // ── 0〜3枚未確定: 同期で即計算
+  if(nu===0){
+    evalOne(); buildResult();
+  } else if(nu===1){
+    for(var a=0;a<nd;a++){wb[unkSlots[0]]=deck[a];evalOne();}
+    buildResult();
+  } else if(nu===2){
+    for(var a=0;a<nd-1;a++){wb[unkSlots[0]]=deck[a];
+      for(var b=a+1;b<nd;b++){wb[unkSlots[1]]=deck[b];evalOne();}
+    }
+    buildResult();
+  } else if(nu===3){
+    for(var a=0;a<nd-2;a++){wb[unkSlots[0]]=deck[a];
+      for(var b=a+1;b<nd-1;b++){wb[unkSlots[1]]=deck[b];
+        for(var c=b+1;c<nd;c++){wb[unkSlots[2]]=deck[c];evalOne();}
+      }
+    }
+    buildResult();
+  } else {
+    // ── 4〜5枚未確定: 組み合わせイテレータで非同期チャンク処理
+    var CHUNK=8000;
+    var ci=[]; for(var i=0;i<nu;i++) ci.push(i); // 現在の組み合わせインデックス
+    var done=false;
+
+    function nextCombo(){
+      var i=nu-1;
+      while(i>=0&&ci[i]===nd-nu+i) i--;
+      if(i<0){done=true;return;}
+      ci[i]++;
+      for(var j=i+1;j<nu;j++) ci[j]=ci[j-1]+1;
+    }
+
+    function processChunk(){
+      if(token.cancelled) return;
+      var count=0;
+      while(!done&&count<CHUNK){
+        for(var s=0;s<nu;s++) wb[unkSlots[s]]=deck[ci[s]];
+        evalOne();
+        nextCombo();
+        count++;
+      }
+      if(done) buildResult();
+      else setTimeout(processChunk,0);
+    }
+    processChunk();
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -415,6 +475,7 @@ var state = {
   results: null, allOuts: null, calculating: false
 };
 var calcTimer = null;
+var enumToken = null;
 
 function fullHandCount() {
   var n=0;
@@ -424,18 +485,23 @@ function fullHandCount() {
 
 function scheduleCalc() {
   if(calcTimer) clearTimeout(calcTimer);
+  if(enumToken) enumToken.cancelled=true;
   state.results=null; state.allOuts=null;
   if(fullHandCount()<2){ state.calculating=false; renderAll(); return; }
   state.calculating=true; renderAll();
+  var token={cancelled:false};
+  enumToken=token;
   calcTimer=setTimeout(function(){
-    try {
-      var hands=state.players.map(function(p){return p.hand;});
-      var nsims=state.players.length<=3?6000:4000;
-      state.results=simulate(hands,state.board,nsims);
+    var hands=state.players.map(function(p){return p.hand;});
+    enumerate(hands, state.board, token, function(result){
+      if(token.cancelled) return;
+      state.results=result;
       state.allOuts=[];
-      for(var i=0;i<state.players.length;i++) state.allOuts.push(calcOuts(i,hands,state.board));
-    } catch(e){console.error(e);}
-    state.calculating=false; renderAll();
+      if(result){
+        for(var i=0;i<state.players.length;i++) state.allOuts.push(calcOuts(i,hands,state.board));
+      }
+      state.calculating=false; renderAll();
+    });
   },30);
 }
 
@@ -479,14 +545,23 @@ function renderPlayers() {
   var container = document.getElementById('players');
   container.innerHTML = '';
   var hands = state.players.map(function(p){return p.hand;});
-  var maxWin = state.results ? Math.max.apply(null,state.results.wins) : 0;
+  var maxWin = 0;
+  if(state.results){
+    for(var _i=0;_i<state.results.wins.length;_i++){
+      var _w=state.results.wins[_i]; if(_w!==null&&_w>maxWin) maxWin=_w;
+    }
+  }
 
   for(var i=0;i<state.players.length;i++){
     var p = state.players[i];
 
-    var wpText='--', wpDim=true;
-    if(!state.calculating&&state.results){ wpText=(state.results.wins[i]*100).toFixed(1)+'%'; wpDim=false; }
-    else if(state.calculating) wpText='…';
+    var wpText='--.--%', wpDim=true;
+    if(state.calculating){ wpText='…'; wpDim=true; }
+    else if(state.results){
+      var w=state.results.wins[i];
+      if(w===null){ wpText='--.--%'; wpDim=true; }
+      else { wpText=(w*100).toFixed(2)+'%'; wpDim=false; }
+    }
 
     var knownAll = p.hand.filter(Boolean).concat(state.board.filter(Boolean));
     var hn = (p.hand.filter(Boolean).length>=1&&knownAll.length>=5) ? handName(bestHand(knownAll)) : '';
@@ -529,7 +604,8 @@ function renderPlayers() {
     }
 
     // アウツ（負けているプレイヤーのみ）
-    var isLosing = state.results && (state.results.wins[i] < maxWin - 0.001);
+    var _wi = state.results ? state.results.wins[i] : null;
+    var isLosing = (_wi !== null) && (_wi < maxWin - 0.001);
     if(!state.calculating && isLosing && state.allOuts && state.allOuts[i]){
       var od=state.allOuts[i];
       var oRow=document.createElement('div'); oRow.className='sub-row';
