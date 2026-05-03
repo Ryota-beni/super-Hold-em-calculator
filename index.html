@@ -271,7 +271,7 @@ function cardFaceHTML(card) {
   var rank = card[0] === 'T' ? '10' : card[0];
   var suit = SUIT_NAME_EN[card[1]];
   var path = encodeURI('playing_card/card-' + suit + '-' + rank + ' (1).png');
-  return '<img src="' + path + '" style="width:100%;height:100%;object-fit:contain;display:block;transform:scale(1.55);transform-origin:48% 47%;" alt="' + rank + card[1] + '">';
+  return '<img src="' + path + '" style="width:100%;height:100%;object-fit:contain;display:block;transform:scale(1.55);transform-origin:44% 43%;" alt="' + rank + card[1] + '">';
 }
 
 function cardSVG(card) {
