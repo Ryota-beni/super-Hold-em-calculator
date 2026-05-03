@@ -302,29 +302,31 @@ function rankDisp(r)    { return r === 'T' ? '10' : r; }
 // ══════════════════════════════════════════════
 //  ハンド評価
 // ══════════════════════════════════════════════
+// O(1)ランクテーブル（indexOf の線形探索を排除）
+var _RIDX={'2':0,'3':1,'4':2,'5':3,'6':4,'7':5,'8':6,'9':7,'T':8,'J':9,'Q':10,'K':11,'A':12};
+var _P15=[1,15,225,3375,50625,759375]; // 15^0 〜 15^5
+
 function eval5(cs) {
-  var r = [], s = [];
-  for (var i = 0; i < 5; i++) { r.push(RANKS.indexOf(cs[i][0])); s.push(cs[i][1]); }
-  var fl = s[0]===s[1] && s[1]===s[2] && s[2]===s[3] && s[3]===s[4];
-  var sr = r.slice().sort(function(a,b){return b-a;});
-  var fr = [0,0,0,0,0,0,0,0,0,0,0,0,0];
-  for (var i = 0; i < 5; i++) fr[r[i]]++;
-  var uniq = 0; for (var i = 0; i < 13; i++) if (fr[i]) uniq++;
-  var st = false, shi = sr[0];
-  if (uniq === 5) {
-    if (sr[0]-sr[4]===4) st = true;
-    if (sr[0]===12&&sr[1]===3&&sr[2]===2&&sr[3]===1&&sr[4]===0){st=true;shi=3;}
+  var r0=_RIDX[cs[0][0]],r1=_RIDX[cs[1][0]],r2=_RIDX[cs[2][0]],r3=_RIDX[cs[3][0]],r4=_RIDX[cs[4][0]];
+  var fl=cs[0][1]===cs[1][1]&&cs[1][1]===cs[2][1]&&cs[2][1]===cs[3][1]&&cs[3][1]===cs[4][1];
+  var sr=[r0,r1,r2,r3,r4].sort(function(a,b){return b-a;});
+  var fr=[0,0,0,0,0,0,0,0,0,0,0,0,0];
+  fr[r0]++;fr[r1]++;fr[r2]++;fr[r3]++;fr[r4]++;
+  var uniq=0;for(var i=0;i<13;i++)if(fr[i])uniq++;
+  var st=false,shi=sr[0];
+  if(uniq===5){
+    if(sr[0]-sr[4]===4)st=true;
+    if(sr[0]===12&&sr[1]===3&&sr[2]===2&&sr[3]===1&&sr[4]===0){st=true;shi=3;}
   }
-  var g = [];
-  for (var i = 12; i >= 0; i--) if (fr[i]) g.push([fr[i],i]);
+  var g=[];for(var i=12;i>=0;i--)if(fr[i])g.push([fr[i],i]);
   g.sort(function(a,b){return b[0]!==a[0]?b[0]-a[0]:b[1]-a[1];});
-  var c0=g[0][0], c1=g.length>1?g[1][0]:0, cat;
-  if(fl&&st)cat=8; else if(c0===4)cat=7; else if(c0===3&&c1===2)cat=6;
-  else if(fl)cat=5; else if(st)cat=4; else if(c0===3)cat=3;
-  else if(c0===2&&c1===2)cat=2; else if(c0===2)cat=1; else cat=0;
-  var score = cat * Math.pow(15,5);
-  if (st){ score += shi*Math.pow(15,4); }
-  else { for(var i=0;i<g.length&&i<5;i++) score+=g[i][1]*Math.pow(15,4-i); }
+  var c0=g[0][0],c1=g.length>1?g[1][0]:0,cat;
+  if(fl&&st)cat=8;else if(c0===4)cat=7;else if(c0===3&&c1===2)cat=6;
+  else if(fl)cat=5;else if(st)cat=4;else if(c0===3)cat=3;
+  else if(c0===2&&c1===2)cat=2;else if(c0===2)cat=1;else cat=0;
+  var score=cat*_P15[5];
+  if(st){score+=shi*_P15[4];}
+  else{for(var i=0;i<g.length&&i<5;i++)score+=g[i][1]*_P15[4-i];}
   return score;
 }
 
@@ -417,32 +419,33 @@ function enumerate(hands, board, token, onDone) {
     }
     buildResult();
   } else {
-    // ── 4〜5枚未確定: 組み合わせイテレータで非同期チャンク処理
-    var CHUNK=8000;
-    var ci=[]; for(var i=0;i<nu;i++) ci.push(i); // 現在の組み合わせインデックス
-    var done=false;
+    // ── 4〜5枚未確定: モンテカルロ 10万回（1000回/チャンクで非同期）
+    // 全列挙だとC(46,5)≈137万通りで数秒かかるため高精度MCに切替
+    var NSIMS=100000, CHUNK=1000, simsDone=0;
+    var da=deck.slice();
 
-    function nextCombo(){
-      var i=nu-1;
-      while(i>=0&&ci[i]===nd-nu+i) i--;
-      if(i<0){done=true;return;}
-      ci[i]++;
-      for(var j=i+1;j<nu;j++) ci[j]=ci[j-1]+1;
-    }
-
-    function processChunk(){
-      if(token.cancelled) return;
-      var count=0;
-      while(!done&&count<CHUNK){
-        for(var s=0;s<nu;s++) wb[unkSlots[s]]=deck[ci[s]];
-        evalOne();
-        nextCombo();
-        count++;
+    function shufK(arr,k){
+      // 先頭k枚だけランダム選択（部分Fisher-Yates）
+      var n=arr.length,t;
+      for(var i=0;i<k;i++){
+        var j=i+Math.floor(Math.random()*(n-i));
+        t=arr[i];arr[i]=arr[j];arr[j]=t;
       }
-      if(done) buildResult();
-      else setTimeout(processChunk,0);
     }
-    processChunk();
+
+    function runMC(){
+      if(token.cancelled) return;
+      var end=Math.min(simsDone+CHUNK,NSIMS);
+      while(simsDone<end){
+        shufK(da,nu);
+        for(var s=0;s<nu;s++) wb[unkSlots[s]]=da[s];
+        evalOne();
+        simsDone++;
+      }
+      if(simsDone>=NSIMS) buildResult();
+      else setTimeout(runMC,0);
+    }
+    runMC();
   }
 }
 
