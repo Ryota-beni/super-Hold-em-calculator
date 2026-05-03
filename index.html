@@ -457,7 +457,13 @@ function makeSlotEl(card, type, pi, ci, extraClass) {
   div.className = 'slot ' + (extraClass||'') + (card?' filled':' empty');
 
   if (card) {
-    div.innerHTML = cardFaceHTML(card);
+    var suitName = SUIT_NAME_EN[card[1]];
+    var rank = card[0] === 'T' ? '10' : card[0];
+    var path = 'playing_card/card-' + suitName + '-' + rank + ' (1).png';
+    div.style.backgroundImage = 'url("' + encodeURI(path) + '")';
+    div.style.backgroundSize = '156.25% auto';
+    div.style.backgroundPosition = '44% 42%';
+    div.style.backgroundRepeat = 'no-repeat';
   }
 
   div.addEventListener('click', function(){ openPicker(type, pi, ci); });
