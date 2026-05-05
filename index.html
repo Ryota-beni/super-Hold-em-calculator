@@ -11,10 +11,10 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       min-height: 100vh;
       padding: 16px 14px 60px;
-      background-color: #0d0d18;
+      background-color: #12151C;
       background-image:
-        radial-gradient(ellipse at 25% 15%, rgba(40,55,120,0.35) 0%, transparent 55%),
-        radial-gradient(ellipse at 75% 85%, rgba(20,80,45,0.25) 0%, transparent 55%);
+        radial-gradient(ellipse at 20% 10%, rgba(30,40,80,0.45) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 90%, rgba(40,20,60,0.3) 0%, transparent 50%);
       color: #e8e8f0;
     }
 
@@ -23,12 +23,21 @@
       font-size: 17px;
       font-weight: 700;
       letter-spacing: 1px;
-      color: #c9a84c;
-      margin-bottom: 18px;
-      text-shadow: 0 0 20px rgba(201,168,76,0.4);
+      color: #C8A85A;
+      margin-bottom: 6px;
+      text-shadow: 0 0 20px rgba(200,168,90,0.35);
     }
 
     /* ── ボード ─────────────────────── */
+    .board-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: rgba(200,168,90,0.45);
+      margin-bottom: 6px;
+    }
+
     #board-row {
       display: flex;
       gap: 7px;
@@ -95,17 +104,28 @@
 
     .hand-slots { display: flex; gap: 5px; }
 
-    .winpct {
+    /* 勝率＋役名をまとめる右端ブロック */
+    .win-block {
       margin-left: auto;
-      font-size: 26px;
-      font-weight: 900;
-      color: #39d353;
-      min-width: 80px;
       text-align: right;
+      flex-shrink: 0;
+      min-width: 76px;
+    }
+    .winpct {
+      font-size: 22px;
+      font-weight: 900;
+      color: #4ADE80;
       line-height: 1;
       font-variant-numeric: tabular-nums;
     }
-    .winpct.dim { color: rgba(255,255,255,0.18); font-size: 18px; }
+    .winpct.dim { color: rgba(255,255,255,0.18); font-size: 16px; }
+    .hand-name-lbl {
+      font-size: 10px;
+      font-weight: 600;
+      color: #B9C0CC;
+      margin-top: 3px;
+      letter-spacing: 0.3px;
+    }
 
     .del-x {
       background: none; border: none;
@@ -116,18 +136,39 @@
     }
     .del-x:active { color: #e63946; }
 
-    .sub-row {
+    /* アウツ行 */
+    .outs-row {
       padding-left: 68px;
       margin-top: 5px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .outs-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       font-size: 11px;
       color: rgba(255,255,255,0.38);
-      display: flex;
+    }
+    .outs-toggle {
+      background: none;
+      border: 1px solid rgba(255,255,255,0.18);
+      color: rgba(255,255,255,0.45);
+      font-size: 10px;
+      border-radius: 4px;
+      padding: 1px 7px;
+      cursor: pointer;
+      line-height: 1.4;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .outs-toggle:active { background: rgba(255,255,255,0.08); }
+    .outs-detail {
+      display: none;
       flex-wrap: wrap;
       gap: 3px;
-      align-items: center;
     }
-
-    .hand-name-lbl { color: #7c83ff; font-weight: 600; }
+    .outs-detail.open { display: flex; }
 
     .out-card {
       width: 22px;
@@ -149,14 +190,18 @@
       display: block; width: 100%;
       margin-top: 6px; padding: 13px;
       border-radius: 10px;
-      border: 1.5px dashed rgba(201,168,76,0.3);
-      background: rgba(201,168,76,0.05);
-      color: rgba(201,168,76,0.5);
+      border: 1.5px solid rgba(200,168,90,0.45);
+      background: rgba(200,168,90,0.08);
+      color: rgba(200,168,90,0.8);
       font-size: 15px; font-weight: 700;
       cursor: pointer; text-align: center;
       letter-spacing: 0.5px;
+      transition: background 0.15s, border-color 0.15s;
     }
-    #add-btn:active { background: rgba(201,168,76,0.1); }
+    #add-btn:active {
+      background: rgba(200,168,90,0.18);
+      border-color: rgba(200,168,90,0.7);
+    }
 
     /* ── ピッカーモーダル ────────────── */
     .overlay {
@@ -232,6 +277,7 @@
 
 <h1>SUPER HOLD'EM</h1>
 
+<div class="board-label">Board</div>
 <div id="board-row"></div>
 <div id="players"></div>
 <button id="add-btn" onclick="addPlayer()">＋ プレイヤーを追加</button>
@@ -561,6 +607,7 @@ var state = {
 };
 var calcTimer = null;
 var enumToken = null;
+var outsOpen = {}; // プレイヤーごとのアウツ展開状態
 
 function fullHandCount() {
   var n=0;
@@ -668,10 +715,18 @@ function renderPlayers() {
     for(var j=0;j<3;j++) hs.appendChild(makeSlotEl(p.hand[j],'hand',i,j,'hand-slot'));
     main.appendChild(hs);
 
+    // 勝率 ＋ 役名を右端にまとめる
+    var wb2 = document.createElement('div');
+    wb2.className = 'win-block';
     var wp = document.createElement('div');
     wp.className = 'winpct'+(wpDim?' dim':'');
     wp.textContent = wpText;
-    main.appendChild(wp);
+    wb2.appendChild(wp);
+    if(hn){
+      var hnEl=document.createElement('div'); hnEl.className='hand-name-lbl'; hnEl.textContent=hn;
+      wb2.appendChild(hnEl);
+    }
+    main.appendChild(wb2);
 
     if(state.players.length>2){
       var dx = document.createElement('button');
@@ -681,35 +736,46 @@ function renderPlayers() {
     }
     block.appendChild(main);
 
-    // ハンド名
-    if(hn){
-      var hnEl=document.createElement('div'); hnEl.className='sub-row';
-      var sp=document.createElement('span'); sp.className='hand-name-lbl'; sp.textContent=hn;
-      hnEl.appendChild(sp); block.appendChild(hnEl);
-    }
-
-    // アウツ（負けているプレイヤーのみ）
+    // アウツ（負けているプレイヤーのみ・折りたたみ式）
     var _wi = state.results ? state.results.wins[i] : null;
     var isLosing = (_wi !== null) && (_wi < maxWin - 0.001);
     if(!state.calculating && isLosing && state.allOuts && state.allOuts[i]){
       var od=state.allOuts[i];
-      var oRow=document.createElement('div'); oRow.className='sub-row';
+      var oRow=document.createElement('div'); oRow.className='outs-row';
+
+      // ヘッダー行（枚数 ＋ トグルボタン）
+      var ohdr=document.createElement('div'); ohdr.className='outs-header';
       var lbl=document.createElement('span');
-      lbl.textContent=(od.bn===4?'リバー':'ターン')+'アウツ: '+od.outs.length+'枚　';
-      oRow.appendChild(lbl);
-      var show=od.outs.slice(0,14);
-      for(var k=0;k<show.length;k++){
+      lbl.textContent=(od.bn===4?'リバー':'ターン')+'アウツ: '+od.outs.length+'枚';
+      ohdr.appendChild(lbl);
+      var tog=document.createElement('button');
+      tog.className='outs-toggle';
+      tog.textContent=outsOpen[i]?'▲ 閉じる':'▼ 詳細';
+      (function(pi){
+        tog.addEventListener('click',function(e){
+          e.stopPropagation();
+          outsOpen[pi]=!outsOpen[pi];
+          renderPlayers();
+        });
+      })(i);
+      ohdr.appendChild(tog);
+      oRow.appendChild(ohdr);
+
+      // カード一覧（展開時のみ表示）
+      var detail=document.createElement('div');
+      detail.className='outs-detail'+(outsOpen[i]?' open':'');
+      for(var k=0;k<od.outs.length;k++){
         var oc=document.createElement('div');
         oc.className='out-card';
-        var osn=SUIT_NAME_EN[show[k][1]], ork=show[k][0]==='T'?'10':show[k][0];
+        var osn=SUIT_NAME_EN[od.outs[k][1]], ork=od.outs[k][0]==='T'?'10':od.outs[k][0];
         var obp=encodeURI('playing_card/card-'+osn+'-'+ork+' (1).png');
         oc.style.backgroundImage='url("'+obp+'")';
         oc.style.backgroundSize='156.25% auto';
         oc.style.backgroundPosition='44.44% 40.34%';
         oc.style.backgroundRepeat='no-repeat';
-        oRow.appendChild(oc);
+        detail.appendChild(oc);
       }
-      if(od.outs.length>14){var m=document.createElement('span');m.style.fontSize='14px';m.textContent='…';oRow.appendChild(m);}
+      oRow.appendChild(detail);
       block.appendChild(oRow);
     }
 
