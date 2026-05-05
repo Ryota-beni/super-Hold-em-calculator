@@ -375,8 +375,8 @@
       margin-bottom: 22px;
     }
     #ofuse-sheet .ofuse-go {
-      display: block; width: 100%;
-      padding: 14px;
+      display: inline-block;
+      padding: 12px 28px;
       border-radius: 10px;
       border: 1.5px solid rgba(251,113,133,0.5);
       background: rgba(251,113,133,0.12);
@@ -388,6 +388,10 @@
     }
     #ofuse-sheet .ofuse-go:active {
       background: rgba(251,113,133,0.25);
+    }
+    .ofuse-go-wrap {
+      text-align: center;
+      margin-bottom: 10px;
     }
 
     /* ── フッターリンク群 ────────────────── */
@@ -620,9 +624,11 @@
   <div id="ofuse-sheet">
     <div class="info-handle"></div>
     <div class="ofuse-emoji">☕</div>
-    <p class="ofuse-msg">このスパホ勝率計算ツールが役に立ったなと感じたら、ぜひお心付けをお願いいたします。メッセージと共に送信していただけると飛んで喜びます。いただいたお心付けは本ツールの改善や、別ツールの開発に充てさせていただきます。</p>
-    <p class="ofuse-sub">下部の「応援メッセージを送る」ボタンをタップすると、OFUSEというサービスリンクへ飛びます。</p>
-    <a class="ofuse-go" href="https://ofuse.me/benimaru/letter" target="_blank" rel="noopener">✉ 応援メッセージを送る</a>
+    <p class="ofuse-msg">このツールが役に立ったなと感じたら、ぜひお心付けをお願いします！</p>
+    <p class="ofuse-sub">下部の「応援メッセージを送る」ボタンをタップすると、OFUSEというサービスリンクへ飛びます。<br>メッセージと共に送信していただけると飛んで喜びます。<br>いただいたお心付けは本ツールの改善や、別ツールの開発に充てさせていただきます。</p>
+    <div class="ofuse-go-wrap">
+      <a class="ofuse-go" href="https://ofuse.me/benimaru/letter" target="_blank" rel="noopener">✉ 応援メッセージを送る</a>
+    </div>
     <button class="info-close" onclick="closeOfuse()">閉じる</button>
   </div>
 </div>
