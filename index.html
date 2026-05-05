@@ -619,7 +619,7 @@ function handName(score) {
   var rank = Math.floor(score / _P15[5]);
   if (rank === 8) {
     var sft = Math.floor((score % _P15[5]) / _P15[4]);
-    return sft === 12 ? 'ロイヤルフラッシュ' : 'ストレートフラッシュ';
+    return sft === 12 ? 'ロイヤル' : 'ストレートフラッシュ';
   }
   return HNAMES[rank] || '';
 }
