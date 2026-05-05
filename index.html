@@ -118,8 +118,13 @@
       color: #4ADE80;
       line-height: 1;
       font-variant-numeric: tabular-nums;
+      transition: color 0.3s, text-shadow 0.3s;
     }
     .winpct.dim { color: rgba(255,255,255,0.18); font-size: 16px; }
+    .winpct.top {
+      color: #FBBF24;
+      text-shadow: 0 0 12px rgba(251,191,36,0.55), 0 0 24px rgba(251,191,36,0.25);
+    }
     .hand-name-lbl {
       font-size: 10px;
       font-weight: 600;
@@ -835,6 +840,7 @@ function renderPlayers() {
       if(w===null){ wpText='--.--%'; wpDim=true; }
       else { wpText=(w*100).toFixed(2)+'%'; wpDim=false; }
     }
+    var isTop = !wpDim && state.results && state.results.wins[i]===maxWin && maxWin>0;
 
     var knownAll = p.hand.filter(Boolean).concat(state.board.filter(Boolean));
     var hn = (p.hand.filter(Boolean).length>=1&&knownAll.length>=5) ? handName(bestHand(knownAll)) : '';
@@ -860,7 +866,7 @@ function renderPlayers() {
     var wb2 = document.createElement('div');
     wb2.className = 'win-block';
     var wp = document.createElement('div');
-    wp.className = 'winpct'+(wpDim?' dim':'');
+    wp.className = 'winpct'+(wpDim?' dim':isTop?' top':'');
     wp.textContent = wpText;
     wb2.appendChild(wp);
     if(hn){
