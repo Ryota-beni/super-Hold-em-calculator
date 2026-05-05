@@ -272,11 +272,153 @@
       background: rgba(255,255,255,0.07);
       color: rgba(255,255,255,0.6);
     }
+
+    /* ── インフォボタン ─────────────────── */
+    #info-btn {
+      position: fixed;
+      top: 14px; right: 14px;
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(200,168,90,0.55);
+      background: rgba(200,168,90,0.1);
+      color: #C8A85A;
+      font-size: 15px;
+      font-weight: 700;
+      font-style: italic;
+      font-family: Georgia, serif;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      z-index: 400;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    #info-btn:active {
+      background: rgba(200,168,90,0.25);
+      border-color: rgba(200,168,90,0.85);
+    }
+
+    /* ── インフォモーダル ────────────────── */
+    #info-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.82);
+      z-index: 600;
+      display: flex; flex-direction: column; justify-content: flex-end;
+    }
+    #info-overlay.hidden { display: none; }
+
+    #info-sheet {
+      background: #13131f;
+      border-radius: 20px 20px 0 0;
+      padding: 20px 18px 44px;
+      max-height: 82vh;
+      overflow-y: auto;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .info-handle {
+      width: 36px; height: 4px;
+      background: rgba(255,255,255,0.18);
+      border-radius: 2px;
+      margin: 0 auto 18px;
+    }
+
+    .info-title {
+      font-size: 16px; font-weight: 800;
+      color: #C8A85A;
+      letter-spacing: 0.5px;
+      margin-bottom: 18px;
+      text-align: center;
+    }
+
+    .info-section {
+      margin-bottom: 20px;
+    }
+    .info-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: rgba(200,168,90,0.7);
+      margin-bottom: 8px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid rgba(200,168,90,0.18);
+    }
+    .info-section p {
+      font-size: 13px;
+      line-height: 1.75;
+      color: rgba(232,232,240,0.82);
+    }
+    .info-section ul {
+      list-style: none;
+      padding: 0;
+    }
+    .info-section ul li {
+      font-size: 13px;
+      line-height: 1.75;
+      color: rgba(232,232,240,0.82);
+      padding-left: 14px;
+      position: relative;
+    }
+    .info-section ul li::before {
+      content: '▸';
+      position: absolute; left: 0;
+      color: rgba(200,168,90,0.6);
+      font-size: 10px;
+      top: 3px;
+    }
+    .info-close {
+      width: 100%; margin-top: 4px; padding: 13px;
+      border-radius: 10px; border: none;
+      background: rgba(255,255,255,0.07);
+      color: rgba(255,255,255,0.6);
+      font-size: 14px; font-weight: 700;
+      cursor: pointer;
+    }
+    .info-close:active { background: rgba(255,255,255,0.13); }
   </style>
 </head>
 <body>
 
 <h1>SUPER HOLD'EM</h1>
+
+<button id="info-btn" onclick="openInfo()">i</button>
+
+<div id="info-overlay" class="hidden" onclick="closeInfoOutside(event)">
+  <div id="info-sheet">
+    <div class="info-handle"></div>
+    <div class="info-title">ℹ︎ アプリについて</div>
+
+    <div class="info-section">
+      <div class="info-section-title">アプリ概要</div>
+      <p>スーパーホールデム（Super Hold'em）の勝率をリアルタイムに計算するツールです。各プレイヤーのホールカードとボードを入力すると、現在の状況での正確な勝率を表示します。</p>
+    </div>
+
+    <div class="info-section">
+      <div class="info-section-title">使い方</div>
+      <ul>
+        <li>ボードのカードスロットをタップしてカードを選択する</li>
+        <li>各プレイヤーの3枚のホールカードを入力する</li>
+        <li>2名分以上のホールカードが揃った時点で自動的に勝率を計算する</li>
+        <li>「＋ プレイヤーを追加」で最大6名まで対戦相手を追加できる</li>
+        <li>プレイヤー名の右の「×」でそのプレイヤーを削除できる</li>
+        <li>アウツの「▼ 詳細」をタップすると残りの有効牌を確認できる</li>
+      </ul>
+    </div>
+
+    <div class="info-section">
+      <div class="info-section-title">計算方法</div>
+      <p>残りの未確定ボードカードをすべての組み合わせで全列挙し、各シナリオで勝者を判定して勝率を計算しています（完全列挙法）。</p>
+      <ul>
+        <li>ボードが確定している場合は即座に計算</li>
+        <li>未確定カードが多い場合（プリフロップ等）はバックグラウンドで計算し、完了次第表示</li>
+        <li>スーパーホールデムのルールに従い、3枚のホールカード＋5枚のボードカード（計8枚）から最強の5枚を選んで役を判定</li>
+        <li>同点の場合は勝率を均等に分配</li>
+      </ul>
+    </div>
+
+    <button class="info-close" onclick="closeInfo()">閉じる</button>
+  </div>
+</div>
 
 <div class="board-label">Board</div>
 <div id="board-row"></div>
@@ -917,6 +1059,19 @@ function deletePlayer(i){
 
 // 起動
 renderAll();
+
+// ── インフォモーダル ─────────────────────────────
+function openInfo(){
+  document.getElementById('info-overlay').classList.remove('hidden');
+  document.body.style.overflow='hidden';
+}
+function closeInfo(){
+  document.getElementById('info-overlay').classList.add('hidden');
+  document.body.style.overflow='';
+}
+function closeInfoOutside(e){
+  if(e.target===document.getElementById('info-overlay')) closeInfo();
+}
 </script>
 </body>
 </html>
