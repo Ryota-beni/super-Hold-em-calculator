@@ -278,6 +278,50 @@
       color: rgba(255,255,255,0.6);
     }
 
+    /* ── シェアボタン ───────────────────── */
+    #share-btn {
+      display: block; width: 100%;
+      margin-top: 10px; padding: 13px;
+      border-radius: 10px;
+      border: 1.5px solid rgba(74,222,128,0.4);
+      background: rgba(74,222,128,0.08);
+      color: rgba(74,222,128,0.85);
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; text-align: center;
+      letter-spacing: 0.5px;
+      transition: background 0.15s, border-color 0.15s, opacity 0.2s;
+    }
+    #share-btn:active {
+      background: rgba(74,222,128,0.18);
+      border-color: rgba(74,222,128,0.7);
+    }
+    #share-btn:disabled {
+      opacity: 0.25;
+      pointer-events: none;
+    }
+
+    /* ── トースト通知 ────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 32px; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(30,32,48,0.95);
+      border: 1px solid rgba(74,222,128,0.35);
+      color: #4ADE80;
+      font-size: 13px; font-weight: 600;
+      padding: 10px 22px;
+      border-radius: 99px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s;
+      z-index: 700;
+      white-space: nowrap;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
     /* ── インフォボタン ─────────────────── */
     #info-btn {
       position: fixed;
@@ -427,6 +471,8 @@
 <div id="board-row"></div>
 <div id="players"></div>
 <button id="add-btn" onclick="addPlayer()">＋ プレイヤーを追加</button>
+<button id="share-btn" onclick="shareResult()" disabled>↑ 結果をシェア</button>
+<div id="toast"></div>
 <div id="picker"></div>
 
 <script>
@@ -938,7 +984,11 @@ function renderPlayers() {
   }
 }
 
-function renderAll(){ renderBoard(); renderPlayers(); }
+function renderAll(){
+  renderBoard(); renderPlayers();
+  var sb=document.getElementById('share-btn');
+  if(sb) sb.disabled=!state.results;
+}
 
 // ══════════════════════════════════════════════
 //  カードピッカー
@@ -1068,6 +1118,51 @@ function deletePlayer(i){
 
 // 起動
 renderAll();
+
+// ── シェア ───────────────────────────────────────
+function shareResult(){
+  if(!state.results) return;
+  var lines=[];
+  lines.push('Super Hold\'em Equity');
+  lines.push('');
+
+  // Board
+  var bc=state.board.filter(Boolean);
+  lines.push('Board: '+(bc.length?bc.join(' '):'—'));
+
+  // Players
+  for(var i=0;i<state.players.length;i++){
+    var p=state.players[i];
+    var hc=p.hand.filter(Boolean);
+    if(hc.length<3) continue;
+    var w=state.results.wins[i];
+    var pct=w!==null?(w*100).toFixed(2)+'%':'--.--%';
+    lines.push('P'+(i+1)+': '+hc.join(' ')+' - '+pct);
+  }
+
+  lines.push('');
+  lines.push(window.location.href);
+  lines.push('');
+  lines.push('#スーパーホールデム #ポーカー');
+
+  var text=lines.join('\n');
+
+  if(navigator.share){
+    navigator.share({text:text}).catch(function(){});
+  } else {
+    navigator.clipboard.writeText(text).then(function(){
+      showToast('クリップボードにコピーしました');
+    }).catch(function(){
+      showToast('コピーに失敗しました');
+    });
+  }
+}
+
+function showToast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2200);
+}
 
 // ── インフォモーダル ─────────────────────────────
 function openInfo(){
