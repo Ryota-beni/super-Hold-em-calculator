@@ -324,22 +324,36 @@
 
     /* ── 問い合わせリンク ────────────────── */
     /* ── 投げ銭ボタン ───────────────────── */
-    #ofuse-btn {
-      display: block; width: 100%;
-      margin-top: 10px; padding: 13px;
+    #ofuse-wrap {
+      margin-top: 10px;
       border-radius: 10px;
-      border: 1.5px solid rgba(251,113,133,0.4);
-      background: rgba(251,113,133,0.07);
-      color: rgba(251,113,133,0.85);
-      font-size: 15px; font-weight: 700;
+      border: 1.5px solid rgba(251,113,133,0.25);
+      background: rgba(251,113,133,0.05);
+      padding: 12px 14px;
+      text-align: center;
+    }
+    #ofuse-lead {
+      font-size: 12px;
+      color: rgba(251,113,133,0.6);
+      margin-bottom: 9px;
+      line-height: 1.6;
+    }
+    #ofuse-btn {
+      display: inline-block;
+      padding: 9px 24px;
+      border-radius: 8px;
+      border: 1.5px solid rgba(251,113,133,0.5);
+      background: rgba(251,113,133,0.12);
+      color: rgba(251,113,133,0.9);
+      font-size: 14px; font-weight: 700;
       cursor: pointer; text-align: center;
       letter-spacing: 0.5px;
       text-decoration: none;
       transition: background 0.15s, border-color 0.15s;
     }
     #ofuse-btn:active {
-      background: rgba(251,113,133,0.18);
-      border-color: rgba(251,113,133,0.7);
+      background: rgba(251,113,133,0.25);
+      border-color: rgba(251,113,133,0.8);
     }
 
     /* ── フッターリンク群 ────────────────── */
@@ -566,7 +580,10 @@
 <div id="players"></div>
 <button id="add-btn" onclick="addPlayer()">＋ プレイヤーを追加</button>
 <button id="share-btn" onclick="shareResult()" disabled>↑ 結果をシェア</button>
-<a id="ofuse-btn" href="https://ofuse.me/benimaru" target="_blank" rel="noopener">☕ 応援する（OFUSE）</a>
+<div id="ofuse-wrap">
+  <p id="ofuse-lead">このアプリが役に立ったと思ったら、<br>ひと言メッセージを送ってもらえると嬉しいです ☕</p>
+  <a id="ofuse-btn" href="https://ofuse.me/benimaru/letter" target="_blank" rel="noopener">✉ 応援メッセージを送る</a>
+</div>
 <div id="toast"></div>
 <div id="footer-links">
   <a href="https://docs.google.com/forms/d/e/1FAIpQLSdsF-08bCEU0q1D8O9OPzD0rCH_Ols_HC9LuKv9XwnSWH_QFg/viewform?usp=publish-editor" target="_blank" rel="noopener">✉ お問い合わせ</a>
