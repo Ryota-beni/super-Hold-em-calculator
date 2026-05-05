@@ -323,16 +323,62 @@
     }
 
     /* ── 問い合わせリンク ────────────────── */
-    #contact-link {
-      display: block;
-      text-align: center;
+    /* ── フッターリンク群 ────────────────── */
+    #footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
       margin-top: 14px;
+    }
+    #footer-links a {
       font-size: 12px;
       color: rgba(255,255,255,0.25);
       text-decoration: none;
       letter-spacing: 0.3px;
     }
-    #contact-link:active { color: rgba(255,255,255,0.5); }
+    #footer-links a:active { color: rgba(255,255,255,0.5); }
+
+    /* ── プライバシーポリシーモーダル ───── */
+    #pp-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.82);
+      z-index: 600;
+      display: flex; flex-direction: column; justify-content: flex-end;
+    }
+    #pp-overlay.hidden { display: none; }
+
+    #pp-sheet {
+      background: #13131f;
+      border-radius: 20px 20px 0 0;
+      padding: 20px 18px 44px;
+      max-height: 88vh;
+      overflow-y: auto;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .pp-article {
+      font-size: 13px;
+      line-height: 1.8;
+      color: rgba(232,232,240,0.75);
+    }
+    .pp-article h2 {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: rgba(200,168,90,0.7);
+      margin: 18px 0 6px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid rgba(200,168,90,0.18);
+    }
+    .pp-article p { margin-bottom: 8px; }
+    .pp-article ul { padding-left: 14px; margin-bottom: 8px; }
+    .pp-article ul li { margin-bottom: 3px; }
+    .pp-date {
+      margin-top: 20px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.3);
+      text-align: right;
+    }
 
     .info-contact {
       display: block;
@@ -502,7 +548,76 @@
 <button id="add-btn" onclick="addPlayer()">＋ プレイヤーを追加</button>
 <button id="share-btn" onclick="shareResult()" disabled>↑ 結果をシェア</button>
 <div id="toast"></div>
-<a id="contact-link" href="https://docs.google.com/forms/d/e/1FAIpQLSdsF-08bCEU0q1D8O9OPzD0rCH_Ols_HC9LuKv9XwnSWH_QFg/viewform?usp=publish-editor" target="_blank" rel="noopener">✉ お問い合わせ</a>
+<div id="footer-links">
+  <a href="https://docs.google.com/forms/d/e/1FAIpQLSdsF-08bCEU0q1D8O9OPzD0rCH_Ols_HC9LuKv9XwnSWH_QFg/viewform?usp=publish-editor" target="_blank" rel="noopener">✉ お問い合わせ</a>
+  <a href="#" onclick="openPP();return false;">プライバシーポリシー</a>
+</div>
+
+<div id="pp-overlay" class="hidden" onclick="closePPOutside(event)">
+  <div id="pp-sheet">
+    <div class="info-handle"></div>
+    <div class="info-title">プライバシーポリシー</div>
+    <div class="pp-article">
+      <p>Super Hold'em Calculator（以下「当サイト」）は、スーパーホールデムの勝率計算を目的としたWebアプリです。当サイトでは、ユーザーのプライバシーを尊重し、取得する情報の管理に努めます。</p>
+
+      <h2>1. 取得する情報</h2>
+      <p>当サイトでは、以下の情報を取得する場合があります。</p>
+      <ul>
+        <li>アクセス日時</li>
+        <li>閲覧ページ</li>
+        <li>使用端末、ブラウザ、OSに関する情報</li>
+        <li>IPアドレス</li>
+        <li>Cookie等の識別子</li>
+        <li>お問い合わせ時に入力された情報</li>
+      </ul>
+      <p>なお、当サイトの勝率計算機能に入力されたカード情報は、勝率計算および画面表示のために使用されます。</p>
+
+      <h2>2. 利用目的</h2>
+      <p>取得した情報は、以下の目的で利用します。</p>
+      <ul>
+        <li>当サイトの提供および改善</li>
+        <li>利用状況の分析</li>
+        <li>不具合の調査</li>
+        <li>お問い合わせへの対応</li>
+        <li>広告配信および広告効果の測定</li>
+      </ul>
+
+      <h2>3. 広告について</h2>
+      <p>当サイトでは、第三者配信の広告サービスであるGoogle AdSenseを利用する場合があります。</p>
+      <p>Googleを含む第三者配信事業者は、Cookieを使用して、ユーザーが当サイトや他のサイトに過去にアクセスした情報に基づいて広告を配信することがあります。</p>
+      <p>Googleによる広告Cookieの使用により、Googleおよびそのパートナーは、ユーザーの当サイトや他のサイトへのアクセス情報に基づいて、適切な広告を表示できます。</p>
+      <p>ユーザーは、Googleの広告設定ページにて、パーソナライズ広告を無効にできます。</p>
+
+      <h2>4. アクセス解析について</h2>
+      <p>当サイトでは、利用状況の把握およびサービス改善のため、Google Analytics、Vercel Analytics等のアクセス解析ツールを利用する場合があります。</p>
+      <p>これらのツールはCookie等を使用して、匿名のトラフィックデータを収集する場合があります。収集される情報は、個人を特定するものではありません。</p>
+
+      <h2>5. Cookieについて</h2>
+      <p>Cookieとは、ユーザーのブラウザに保存される情報です。当サイトでは、広告配信、アクセス解析、利便性向上のためにCookieを使用する場合があります。</p>
+      <p>ユーザーは、ブラウザの設定によりCookieを無効にできます。ただし、Cookieを無効にした場合、当サイトの一部機能が正常に動作しない場合があります。</p>
+
+      <h2>6. 第三者提供について</h2>
+      <p>当サイトは、法令に基づく場合を除き、ユーザーの同意なく個人情報を第三者に提供しません。</p>
+      <p>ただし、広告配信事業者、アクセス解析事業者、ホスティングサービス等により、必要な範囲で情報が処理される場合があります。</p>
+
+      <h2>7. 免責事項</h2>
+      <p>当サイトは、スーパーホールデムの勝率計算を補助するためのツールです。計算結果の正確性には注意を払っていますが、その完全性や正確性を保証するものではありません。</p>
+      <p>当サイトの利用により生じたいかなる損害についても、当サイト運営者は責任を負いません。</p>
+
+      <h2>8. 著作権について</h2>
+      <p>当サイトに掲載されている文章、画像、デザイン、プログラム等の著作権は、当サイト運営者または正当な権利者に帰属します。無断転載、無断利用を禁止します。</p>
+
+      <h2>9. お問い合わせ</h2>
+      <p>当サイトに関するお問い合わせは、<a href="https://docs.google.com/forms/d/e/1FAIpQLSdsF-08bCEU0q1D8O9OPzD0rCH_Ols_HC9LuKv9XwnSWH_QFg/viewform?usp=publish-editor" target="_blank" rel="noopener" style="color:#C8A85A;">お問い合わせフォーム</a>よりお願いいたします。</p>
+
+      <h2>10. プライバシーポリシーの変更</h2>
+      <p>当サイトは、必要に応じて本プライバシーポリシーを変更することがあります。変更後の内容は、当サイトに掲載した時点で効力を生じるものとします。</p>
+
+      <p class="pp-date">制定日：2026年5月5日</p>
+    </div>
+    <button class="info-close" onclick="closePP()">閉じる</button>
+  </div>
+</div>
 <div id="picker"></div>
 
 <script>
@@ -1205,6 +1320,19 @@ function closeInfo(){
 }
 function closeInfoOutside(e){
   if(e.target===document.getElementById('info-overlay')) closeInfo();
+}
+
+// ── プライバシーポリシー ──────────────────────────
+function openPP(){
+  document.getElementById('pp-overlay').classList.remove('hidden');
+  document.body.style.overflow='hidden';
+}
+function closePP(){
+  document.getElementById('pp-overlay').classList.add('hidden');
+  document.body.style.overflow='';
+}
+function closePPOutside(e){
+  if(e.target===document.getElementById('pp-overlay')) closePP();
 }
 </script>
 </body>
