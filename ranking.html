@@ -192,7 +192,7 @@
   <h1>SUPER HOLD'EM <span class="sub-inline">ハンドランキング</span></h1>
   <div class="search-wrap">
     <input id="search" type="text" inputmode="text" autocomplete="off"
-           placeholder="ランク・属性で検索  例: AKQ / ランダウン / コネクター">
+           placeholder="ランクで検索  例: AKQ / AA / T9">
   </div>
   <div class="chips" id="chips"></div>
   <div class="count" id="count"></div>
@@ -352,7 +352,8 @@ var IS_MOCK = !window.__RANKING__;
   for(i=0;i<DATA.length;i++){
     cum += (DATA[i].combos||1);
     DATA[i].topPct = 100*cum/total; // 最強≈0.02%, 最弱=100%
-    DATA[i].attrStr = buildAttrs(DATA[i].stype, DATA[i].ranks).join('・'); // 属性キャッシュ(検索用)
+    DATA[i].attrs = buildAttrs(DATA[i].stype, DATA[i].ranks); // 属性キャッシュ
+    DATA[i].attrStr = DATA[i].attrs.join('・');
   }
 })();
 
@@ -363,44 +364,59 @@ function fmtTop(p){
 // ══════════════════════════════════════════════
 //  UI
 // ══════════════════════════════════════════════
-var state = { q:'', filter:'all' };
+var state = { q:'', attrs:{} }; // attrs: 選択中の属性チップ {タグ名:true}
 
-var FILTERS = [
-  ['all','すべて'],
-  ['trips','トリップス'],
-  ['pair','ペア'],
-  ['monotone','モノトーン'],
-  ['two-tone','ツートーン'],
-  ['rainbow','レインボー']
-];
+// 属性フィルターチップ（複数選択＝AND）
+var ATTR_CHIPS = ['トリップス','ペア','モノトーン','スーテッド','レインボー','ランダウン','コネクター','ギャッパー','ブロードウェイ'];
+
+// その行が指定の属性を持つか（「ギャッパー」は1〜3ギャッパーのいずれか）
+function hasAttr(row, chip){
+  if(chip==='ギャッパー'){
+    for(var i=0;i<row.attrs.length;i++) if(/ギャッパー$/.test(row.attrs[i])) return true;
+    return false;
+  }
+  return row.attrs.indexOf(chip) >= 0;
+}
+
+function anySelected(){
+  for(var k in state.attrs) if(state.attrs[k]) return true;
+  return false;
+}
 
 function renderChips(){
   var el=document.getElementById('chips');
   el.innerHTML='';
-  FILTERS.forEach(function(f){
+  // 「すべて」＝選択解除
+  var all=document.createElement('div');
+  all.className='chip'+(!anySelected()?' active':'');
+  all.textContent='すべて';
+  all.addEventListener('click',function(){ state.attrs={}; renderChips(); render(); });
+  el.appendChild(all);
+  // 属性チップ（トグル）
+  ATTR_CHIPS.forEach(function(name){
     var c=document.createElement('div');
-    c.className='chip'+(state.filter===f[0]?' active':'');
-    c.textContent=f[1];
-    c.addEventListener('click',function(){ state.filter=f[0]; renderChips(); render(); });
+    c.className='chip'+(state.attrs[name]?' active':'');
+    c.textContent=name;
+    c.addEventListener('click',function(){
+      state.attrs[name]=!state.attrs[name];
+      renderChips(); render();
+    });
     el.appendChild(c);
   });
 }
 
+// 選択中の属性をすべて持つ行だけ通す（AND）
 function matchFilter(row){
-  if(state.filter==='all') return true;
-  if(state.filter==='pair') return row.stype==='pair-suited'||row.stype==='pair-offsuit';
-  return row.stype===state.filter;
+  for(var k in state.attrs){
+    if(state.attrs[k] && !hasAttr(row,k)) return false;
+  }
+  return true;
 }
 
-// 検索：ランク文字なら「そのランクを含むか」、それ以外(日本語)なら「属性に含むか」で照合
+// 検索：ランク文字がすべてハンドに含まれるか（枚数考慮）
 function matchQuery(row){
   var raw=state.q.trim();
   if(!raw) return true;
-  // ランク文字以外を含むなら属性テキスト検索
-  var hasNonRank=/[^\s2-9tjqkaTJQKA]/.test(raw.replace(/10/g,'T'));
-  if(hasNonRank){
-    return row.attrStr.indexOf(raw) >= 0;
-  }
   // ランク検索（入力ランクがすべてハンドに含まれるか・枚数考慮）
   var q=raw.toUpperCase().replace(/10/g,'T').replace(/[^2-9TJQKA]/g,'');
   if(!q) return true;
@@ -439,7 +455,7 @@ function render(){
   } else {
     list.appendChild(frag);
   }
-  document.getElementById('count').textContent = n+' ハンド'+(state.q||state.filter!=='all'?'（全'+DATA.length+'中）':'');
+  document.getElementById('count').textContent = n+' ハンド'+(state.q||anySelected()?'（全'+DATA.length+'中）':'');
 }
 
 document.getElementById('search').addEventListener('input',function(e){
